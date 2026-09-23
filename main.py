@@ -1,28 +1,40 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
-import sqlite3
+import os
+import psycopg
+
+# Récupère l'adresse de PostgreSQL depuis les variables d'environnement
+database_url = os.getenv("DATABASE_URL")
 
 app = FastAPI()
 
-connection = sqlite3.connect("nexus.db", check_same_thread=False)
+# Connexion à PostgreSQL
+connection = psycopg.connect(database_url)
+
+# Création de la table si elle n'existe pas déjà
 connection.execute("""
 CREATE TABLE IF NOT EXISTS candidates (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     name TEXT NOT NULL,
     job TEXT NOT NULL
 )
 """)
 
-candidates = []
+connection.commit()
+
+
 class Candidate(BaseModel):
     name: str
     job: str
 
+
+# HEALTH
 @app.get("/health")
 def health():
     return {"status": "ok", "version": "1.1"}
 
-#GET Candidate
+
+# GET Candidates
 @app.get("/candidates")
 def get_candidates():
     cursor = connection.execute(
@@ -36,35 +48,41 @@ def get_candidates():
         for row in rows
     ]
 
-#POST Candidate
+
+# POST Candidate
 @app.post("/candidates")
 def create_candidate(candidate: Candidate):
     connection.execute(
-        "INSERT INTO candidates (name, job) VALUES (?, ?)",
+        "INSERT INTO candidates (name, job) VALUES (%s, %s)",
         (candidate.name, candidate.job)
     )
+
     connection.commit()
 
     return candidate
 
-#DELETE Candidate
+
+# DELETE Candidate
 @app.delete("/candidates/{candidate_id}")
 def delete_candidate(candidate_id: int):
     connection.execute(
-        "DELETE FROM candidates WHERE id = ?",
+        "DELETE FROM candidates WHERE id = %s",
         (candidate_id,)
     )
+
     connection.commit()
 
     return {"message": "Candidate deleted"}
 
-#UPDATE Candidate
+
+# UPDATE Candidate
 @app.put("/candidates/{candidate_id}")
 def update_candidate(candidate_id: int, candidate: Candidate):
     connection.execute(
-        "UPDATE candidates SET name = ?, job = ? WHERE id = ?",
+        "UPDATE candidates SET name = %s, job = %s WHERE id = %s",
         (candidate.name, candidate.job, candidate_id)
     )
+
     connection.commit()
 
     return {"message": "Candidate updated"}
