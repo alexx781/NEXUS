@@ -20,7 +20,7 @@ class Candidate(BaseModel):
 
 @app.get("/health")
 def health():
-    return {"status": "ok"}
+    return {"status": "ok", "version": "1.1"}
 
 #GET Candidate
 @app.get("/candidates")
