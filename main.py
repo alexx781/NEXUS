@@ -2,8 +2,10 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 import os
 import psycopg
+from dotenv import load_dotenv
 
 # Récupère l'adresse de PostgreSQL depuis les variables d'environnement
+load_dotenv()
 database_url = os.getenv("DATABASE_URL")
 
 app = FastAPI()
