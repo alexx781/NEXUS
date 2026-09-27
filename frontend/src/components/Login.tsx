@@ -5,8 +5,8 @@ type LoginProps = {
 }
 
 function Login({ onLogin }: LoginProps) {
-    const [email, setEmail] = useState("alex@nexus.local")
-    const [password, setPassword] = useState("NexusTest123!")
+    const [email, setEmail] = useState("")
+    const [password, setPassword] = useState("")
 
     async function login() {
         const response = await fetch("http://127.0.0.1:8001/login", {
