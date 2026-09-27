@@ -5,12 +5,18 @@ from fastapi import FastAPI, Depends, HTTPException
 from security import get_current_user, require_admin
 from psycopg.errors import UniqueViolation, ForeignKeyViolation
 from fastapi.middleware.cors import CORSMiddleware
+import os
 
 app = FastAPI()
 
+frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=[
+        "http://localhost:5173",
+        frontend_url,
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
