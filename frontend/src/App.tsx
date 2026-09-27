@@ -44,11 +44,6 @@ function App() {
     setApplications(data)
   }
 
-  async function getStats() {
-    const data = await apiGet("/stats", token)
-    setStats(data)
-  }
-
   function logout() {
     setToken("")
     setCandidates([])
@@ -60,12 +55,36 @@ function App() {
   }
 
   useEffect(() => {
-    if (token) {
-      getCandidates()
-      getClients()
-      getMissions()
-      getApplications()
-      getStats()
+    if (!token) return
+
+    let cancelled = false
+
+    async function loadData() {
+      try {
+        const [candidates, clients, missions, applications, stats] = await Promise.all([
+          apiGet("/candidates", token),
+          apiGet("/clients", token),
+          apiGet("/missions", token),
+          apiGet("/applications", token),
+          apiGet("/stats", token),
+        ])
+
+        if (cancelled) return
+
+        setCandidates(candidates)
+        setClients(clients)
+        setMissions(missions)
+        setApplications(applications)
+        setStats(stats)
+      } catch (error) {
+        if (!cancelled) console.error("Impossible de charger les données", error)
+      }
+    }
+
+    void loadData()
+
+    return () => {
+      cancelled = true
     }
   }, [token])
 
