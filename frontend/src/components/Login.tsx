@@ -24,31 +24,42 @@ function Login({ onLogin }: LoginProps) {
 
         if (response.ok) {
             onLogin(data.access_token)
-            alert("Connexion réussie !")
         } else {
             alert("Email ou mot de passe incorrect")
         }
     }
 
     return (
-        <div>
-            <h2>Connexion</h2>
+        <div className="login-page">
+            <div className="login-card">
+                <h1 className="logo">NEXUS</h1>
+                <h2>Connexion</h2>
 
-            <input
-                type="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-            />
+                <p style={{ marginBottom: "24px", color: "#64748b" }}>
+                    Connectez-vous à votre espace de recrutement.
+                </p>
 
-            <input
-                type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-            />
+                <input
+                    type="email"
+                    placeholder="Adresse email"
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                />
 
-            <button onClick={login}>
-                Se connecter
-            </button>
+                <input
+                    type="password"
+                    placeholder="Mot de passe"
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                />
+
+                <button
+                    className="primary-button"
+                    onClick={login}
+                >
+                    Se connecter
+                </button>
+            </div>
         </div>
     )
 }

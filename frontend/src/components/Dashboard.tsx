@@ -5,9 +5,7 @@ type DashboardProps = {
 
 function Dashboard({ onNavigate, onLogout }: DashboardProps) {
     return (
-        <div>
-            <h2>Dashboard</h2>
-
+        <aside className="sidebar">
             <nav>
                 <button onClick={() => onNavigate("dashboard")}>
                     Dashboard
@@ -25,11 +23,18 @@ function Dashboard({ onNavigate, onLogout }: DashboardProps) {
                     Missions
                 </button>
 
-                <button onClick={onLogout}>
+                <button onClick={() => onNavigate("applications")}>
+                    Candidatures
+                </button>
+
+                <button
+                    className="logout-button"
+                    onClick={onLogout}
+                >
                     Déconnexion
                 </button>
             </nav>
-        </div>
+        </aside>
     )
 }
 

@@ -3,7 +3,7 @@ from models import Candidate, Client, Mission, Application, UserRegister, UserLo
 from security import hash_password, verify_password, create_access_token
 from fastapi import FastAPI, Depends, HTTPException
 from security import get_current_user, require_admin
-from psycopg.errors import UniqueViolation
+from psycopg.errors import UniqueViolation, ForeignKeyViolation
 from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
@@ -16,13 +16,44 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 # HEALTH
+
 @app.get("/health")
 def health():
     return {"status": "ok", "version": "1.1"}
 
+# STATS
 
-# GET Candidates
+@app.get("/stats")
+def get_stats(current_user = Depends(get_current_user)):
+    with get_connection() as connection:
+        candidates = connection.execute(
+            "SELECT COUNT(*) FROM candidates"
+        ).fetchone()[0]
+
+        clients = connection.execute(
+            "SELECT COUNT(*) FROM clients"
+        ).fetchone()[0]
+
+        missions = connection.execute(
+            "SELECT COUNT(*) FROM missions"
+        ).fetchone()[0]
+
+        applications = connection.execute(
+            "SELECT COUNT(*) FROM applications"
+        ).fetchone()[0]
+
+    return {
+        "candidates": candidates,
+        "clients": clients,
+        "missions": missions,
+        "applications": applications
+    }
+
+
+# CANDIDATES
+
 @app.get("/candidates")
 def get_candidates(current_user = Depends(get_current_user)):
     with get_connection() as connection:
@@ -48,9 +79,11 @@ def get_candidates(current_user = Depends(get_current_user)):
     ]
 
 
-# POST Candidate
 @app.post("/candidates")
-def create_candidate(candidate: Candidate):
+def create_candidate(
+    candidate: Candidate,
+    current_user = Depends(get_current_user)
+):
     with get_connection() as connection:
         connection.execute(
             """
@@ -71,7 +104,6 @@ def create_candidate(candidate: Candidate):
     return candidate
 
 
-# DELETE Candidate
 @app.delete("/candidates/{candidate_id}")
 def delete_candidate(
     candidate_id: int,
@@ -86,9 +118,12 @@ def delete_candidate(
     return {"message": "Candidate deleted"}
 
 
-# UPDATE Candidate
 @app.put("/candidates/{candidate_id}")
-def update_candidate(candidate_id: int, candidate: Candidate):
+def update_candidate(
+    candidate_id: int,
+    candidate: Candidate,
+    current_user = Depends(get_current_user)
+):
     with get_connection() as connection:
         connection.execute(
             """
@@ -114,16 +149,18 @@ def update_candidate(candidate_id: int, candidate: Candidate):
 
     return {"message": "Candidate updated"}
 
+
 # CLIENTS
 
 @app.get("/clients")
-def get_clients():
+def get_clients(current_user = Depends(get_current_user)):
     with get_connection() as connection:
         cursor = connection.execute("""
             SELECT id, name, email, phone
             FROM clients
             ORDER BY id
         """)
+
         rows = cursor.fetchall()
 
     return [
@@ -138,7 +175,10 @@ def get_clients():
 
 
 @app.post("/clients")
-def create_client(client: Client):
+def create_client(
+    client: Client,
+    current_user = Depends(get_current_user)
+):
     with get_connection() as connection:
         cursor = connection.execute(
             """
@@ -157,7 +197,7 @@ def create_client(client: Client):
 # MISSIONS
 
 @app.get("/missions")
-def get_missions():
+def get_missions(current_user = Depends(get_current_user)):
     with get_connection() as connection:
         cursor = connection.execute("""
             SELECT
@@ -188,7 +228,10 @@ def get_missions():
 
 
 @app.post("/missions")
-def create_mission(mission: Mission):
+def create_mission(
+    mission: Mission,
+    current_user = Depends(get_current_user)
+):
     with get_connection() as connection:
         cursor = connection.execute(
             """
@@ -209,31 +252,54 @@ def create_mission(mission: Mission):
 
     return {"id": mission_id, **mission.model_dump()}
 
+
 # APPLICATIONS
 
 @app.post("/applications")
-def create_application(application: Application):
-    with get_connection() as connection:
-        cursor = connection.execute(
-            """
-            INSERT INTO applications (candidate_id, mission_id, status)
-            VALUES (%s, %s, %s)
-            RETURNING id
-            """,
-            (
-                application.candidate_id,
-                application.mission_id,
-                application.status
+def create_application(
+    application: Application,
+    current_user = Depends(get_current_user)
+):
+    try:
+        with get_connection() as connection:
+            cursor = connection.execute(
+                """
+                INSERT INTO applications
+                (candidate_id, mission_id, status)
+                VALUES (%s, %s, %s)
+                RETURNING id
+                """,
+                (
+                    application.candidate_id,
+                    application.mission_id,
+                    application.status
+                )
             )
+
+            application_id = cursor.fetchone()[0]
+
+    except UniqueViolation:
+        raise HTTPException(
+            status_code=409,
+            detail="Candidate already proposed for this mission"
         )
 
-        application_id = cursor.fetchone()[0]
+    except ForeignKeyViolation:
+        raise HTTPException(
+            status_code=400,
+            detail="Candidate or mission does not exist"
+        )
 
-    return {"id": application_id, **application.model_dump()}
+    return {
+        "id": application_id,
+        **application.model_dump()
+    }
 
 
 @app.get("/applications")
-def get_applications():
+def get_applications(
+    current_user = Depends(get_current_user)
+):
     with get_connection() as connection:
         cursor = connection.execute("""
             SELECT
@@ -265,6 +331,7 @@ def get_applications():
         }
         for row in rows
     ]
+
 
 # AUTH
 
